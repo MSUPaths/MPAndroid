@@ -1,8 +1,9 @@
 /bin/*
 
 # Built application files
-/*/build/
+**/build/
 
+**/dist/
 # Crashlytics configuations
 com_crashlytics_export_strings.xml
 
@@ -29,6 +30,8 @@ local.properties
 .idea/vcs.xml
 *.iml
 
+build
+
 # OS-specific files
 .DS_Store
 .DS_Store?
@@ -37,3 +40,4 @@ local.properties
 .Trashes
 ehthumbs.db
 Thumbs.db
+
