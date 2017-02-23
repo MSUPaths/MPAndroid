@@ -209,17 +209,10 @@ public class MapDisplay extends Activity
             }
         });
 
-
         LocationDisplayManager locationDisplayManager = mMap.getLocationDisplayManager();
         locationDisplayManager.setLocationListener(new MyLocationListener());
         locationDisplayManager.start();
         locationDisplayManager.setAutoPanMode(LocationDisplayManager.AutoPanMode.OFF);
-
-
-
-
-
-
     }
 
     private class MyLocationListener implements LocationListener {
@@ -376,7 +369,6 @@ public class MapDisplay extends Activity
                         double y = geometry.getDouble("y");
                         mIntersectionList.add(new Point(x, y));
                     }
-
                     mHandler.post(mUpdateResults);
                 } catch (Exception e) {
                     mException = e;
@@ -498,7 +490,6 @@ public class MapDisplay extends Activity
             }
         }
 
-        Log.i(TAG, "" + curDirections.toArray()[curDirections.size() - 1]);
 
         // Reset the selected segment
         selectedSegmentID = -1;
@@ -616,14 +607,15 @@ public class MapDisplay extends Activity
     }
 
     private static String convertInputStreamToString(InputStream inputStream) throws IOException {
-        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-        String line = "";
-        String result = "";
-        while ((line = bufferedReader.readLine()) != null)
-            result += line;
-
+        int BUFFERSIZE = 1024;
+        StringBuilder sb = new StringBuilder();
+        byte[] readBuffer = new byte[BUFFERSIZE];
+        int readSize;
+        while((readSize = inputStream.read(readBuffer)) != -1) {
+            sb.append(new String(readBuffer, 0, readSize));
+        }
         inputStream.close();
-        return result;
+        return sb.toString();
     }
 }
 
