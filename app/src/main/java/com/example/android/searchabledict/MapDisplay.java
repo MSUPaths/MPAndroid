@@ -19,14 +19,11 @@ import android.app.FragmentTransaction;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Color;
-import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
-import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.widget.DrawerLayout;
-import android.text.Layout;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MenuItem;
@@ -40,15 +37,11 @@ import com.esri.android.map.GraphicsLayer;
 import com.esri.android.map.LocationDisplayManager;
 import com.esri.android.map.MapView;
 import com.esri.core.geometry.Geometry;
-import com.esri.core.geometry.GeometryEngine;
 import com.esri.core.geometry.Line;
 import com.esri.core.geometry.MultiPath;
 import com.esri.core.geometry.Point;
 import com.esri.core.geometry.Polygon;
 import com.esri.core.geometry.Polyline;
-import com.esri.core.geometry.Segment;
-import com.esri.core.geometry.SegmentIterator;
-import com.esri.core.geometry.SpatialReference;
 import com.esri.core.map.Graphic;
 import com.esri.core.symbol.PictureMarkerSymbol;
 import com.esri.core.symbol.SimpleLineSymbol;
@@ -60,10 +53,6 @@ import com.esri.core.tasks.na.RouteResult;
 import com.esri.core.tasks.na.RouteTask;
 import com.esri.core.tasks.na.StopGraphic;
 
-import java.security.Provider;
-import com.esri.core.tasks.query.QueryParameters;
-import com.esri.core.tasks.query.QueryTask;
-
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -71,15 +60,12 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.lang.reflect.Array;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import com.google.maps.android.quadtree.PointQuadTree;
 
 //Will eventually display the map and draw the lines
 public class MapDisplay extends Activity
@@ -361,14 +347,7 @@ public class MapDisplay extends Activity
 
                     //Parse JSON and create array list of intersections
                     JSONObject intersectionJSON = new JSONObject(convertInputStreamToString(inputStream));
-                    JSONArray intersectionArray = intersectionJSON.getJSONArray("features");
-                    Log.i("QUERY RESULTS", Integer.toString(intersectionArray.length()));
-                    for (int i = 0; i < intersectionArray.length(); i++) {
-                        JSONObject geometry = intersectionArray.getJSONObject(i).getJSONObject("geometry");
-                        double x = geometry.getDouble("x");
-                        double y = geometry.getDouble("y");
-                        mIntersectionList.add(new Point(x, y));
-                    }
+                    fillQuadTree(intersectionJSON);
                     mHandler.post(mUpdateResults);
                 } catch (Exception e) {
                     mException = e;
@@ -379,6 +358,27 @@ public class MapDisplay extends Activity
         // Start the operation
         t.start();
     }
+
+    PointQuadTree<QuadTreeItem> quadtree = new PointQuadTree<QuadTreeItem>(-9408006, -9396379, 5261293, 5272729);
+
+    public void fillQuadTree(JSONObject jsonobject) throws IOException, org.json.JSONException{
+
+        JSONArray intersectionArray = jsonobject.getJSONArray("features");
+        Log.i("QUERY RESULTS", Integer.toString(intersectionArray.length()));
+        for (int i = 0; i < intersectionArray.length(); i++) {
+            JSONObject geometry = intersectionArray.getJSONObject(i).getJSONObject("geometry");
+            double x = geometry.getDouble("x");
+            double y = geometry.getDouble("y");
+
+            quadtree.add(new QuadTreeItem(x, y));
+//            mIntersectionList.add(new Point(x, y));
+        }
+
+
+    }
+
+
+
 
     /**
      * Updates the UI after a successful rest response has been received.
