@@ -41,6 +41,7 @@ import com.esri.android.map.LocationDisplayManager;
 import com.esri.android.map.MapView;
 import com.esri.core.geometry.Geometry;
 import com.esri.core.geometry.GeometryEngine;
+import com.esri.core.geometry.Line;
 import com.esri.core.geometry.MultiPath;
 import com.esri.core.geometry.Point;
 import com.esri.core.geometry.Polygon;
@@ -60,14 +61,29 @@ import com.esri.core.tasks.na.RouteTask;
 import com.esri.core.tasks.na.StopGraphic;
 
 import java.security.Provider;
+import com.esri.core.tasks.query.QueryParameters;
+import com.esri.core.tasks.query.QueryTask;
+
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.lang.reflect.Array;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 
 //Will eventually display the map and draw the lines
-public class MapDisplay extends Activity implements
-        RoutingListFragment.onDrawerListSelectedListener
-        {
-
+public class MapDisplay extends Activity
+        implements RoutingListFragment.onDrawerListSelectedListener {
     public static MapView mMap = null;
 
     Route mRoute;
@@ -85,6 +101,10 @@ public class MapDisplay extends Activity implements
 
     // List of the directions for the current route (used for the ListActivity)
     public static ArrayList<String> curDirections = null;
+    public static ArrayList<Point> curGPSPoints = null;
+
+    public static ArrayList<Point> mIntersectionList = null;
+    public static int nextDirection;
 
     // Current route, route summary, and gps location
     Route curRoute = null;
@@ -147,6 +167,9 @@ public class MapDisplay extends Activity implements
         mMap.addLayer(hiddenSegmentsLayer);
 
         curDirections = new ArrayList<String>();
+        curGPSPoints = new ArrayList<Point>();
+        mIntersectionList = new ArrayList<Point>();
+        nextDirection = 1;
 
         // Make the segmentHider symbol "invisible"
         segmentHider.setAlpha(1);
@@ -186,17 +209,10 @@ public class MapDisplay extends Activity implements
             }
         });
 
-
         LocationDisplayManager locationDisplayManager = mMap.getLocationDisplayManager();
         locationDisplayManager.setLocationListener(new MyLocationListener());
         locationDisplayManager.start();
         locationDisplayManager.setAutoPanMode(LocationDisplayManager.AutoPanMode.OFF);
-
-
-
-
-
-
     }
 
     private class MyLocationListener implements LocationListener {
@@ -226,9 +242,60 @@ public class MapDisplay extends Activity implements
                 mDestinationName = intent.getStringExtra("building_name");
                 Point destination = new Point(Double.valueOf(intent.getStringExtra("longitude")), Double.valueOf(intent.getStringExtra("latitude")));
                 QueryDirections(mLocation, destination);
-                routingStarted=true;
+                routingStarted = true;
+            } else {
+                if (curDirections.size() > nextDirection && curGPSPoints.size() > nextDirection) {
+                    double curLat = mLocation.getY();
+                    double curLong = mLocation.getX();
+                    double nextLat = curGPSPoints.get(nextDirection).getY();
+                    double nextLong = curGPSPoints.get(nextDirection).getX();
+
+                    double dist = getDistFromCoords(curLat, curLong, nextLat, nextLong);
+
+                    Log.i("onLocationChanged", "" + Double.toString(dist));
+
+                    if (dist < 1) {
+                        directionsLabel.setText(curDirections.get(nextDirection));
+                        nextDirection++;
+                    }
+                }
             }
 
+        }
+
+        private double getDistFromCoords(double lat1, double long1, double lat2, double long2) {
+            if ((Math.abs(long2) < 180 && Math.abs(lat2) < 90) ||
+                            (Math.abs(long2) > 20037508.3427892) || (Math.abs(lat2) > 20037508.3427892)) {
+                    return haversine(lat1, long1, lat2, long2);
+                }
+
+                    double x = long2;
+            double y = lat2;
+            double num3 = x / 6378137.0;
+            double num4 = num3 * 57.295779513082323;
+            double num5 = Math.floor((double) ((num4 + 180.0) / 360.0));
+            double num6 = num4 - (num5 * 360.0);
+            double num7 = 1.5707963267948966 - (2.0 * Math.atan(Math.exp((-1.0 * y) / 6378137.0)));
+            long2 = num6;
+            lat2 = num7 * 57.295779513082323;
+            Log.i("getDistFromCoords", "" + Double.toString(lat1) + " " + Double.toString(lat2));
+            return haversine(lat1, long1, lat2, long2);
+        }
+        /**
+         * Calculates the distance in km between two lat/long points
+         * using the haversine formula
+         */
+        public double haversine(
+                    double lat1, double lng1, double lat2, double lng2) {
+            int r = 6371; // average radius of the earth in km
+            double dLat = Math.toRadians(lat2 - lat1);
+            double dLon = Math.toRadians(lng2 - lng1);
+            double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                            Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                                    * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            double d = r * c;
+            return d * 1000; //convert to meters
         }
 
         public void onProviderDisabled(String provider) {
@@ -272,6 +339,36 @@ public class MapDisplay extends Activity implements
 
                     // Solve the route and use the results to update UI when received
                     mResults = mRouteTask.solve(rp);
+                    /*QueryTask queryTask = new QueryTask(getResources().getString(R.string.intersection_url));
+                    QueryParameters query = new QueryParameters();
+                    //query.setInSpatialReference(SpatialReference.create(102100));
+                    //query.setOutFields(new String[]{"STATE_NAME", "POP2000"});
+                    query.setWhere("1=1"); //Get all results
+                    query.setReturnGeometry(true);
+                    queryTask.execute(query);*/
+
+                    // create HttpClient
+                    HttpClient httpclient = new DefaultHttpClient();
+
+              //      String string = "";
+               //     for (int i = 0; i  < 1000; i++){ string += Integer.toString(i);}
+
+                    // make GET request to the given URL
+                    HttpResponse httpResponse = httpclient.execute(new HttpGet("http://prod.gis.msu.edu/arcgis/rest/services/routing/intersections/MapServer/0/query?where=1%3D1&text=&objectIds=&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=&returnGeometry=true&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&returnDistinctValues=false&resultOffset=&resultRecordCount=&f=pjson"));
+
+                    // receive response as inputStream
+                    InputStream inputStream = httpResponse.getEntity().getContent();
+
+                    //Parse JSON and create array list of intersections
+                    JSONObject intersectionJSON = new JSONObject(convertInputStreamToString(inputStream));
+                    JSONArray intersectionArray = intersectionJSON.getJSONArray("features");
+                    Log.i("QUERY RESULTS", Integer.toString(intersectionArray.length()));
+                    for (int i = 0; i < intersectionArray.length(); i++) {
+                        JSONObject geometry = intersectionArray.getJSONObject(i).getJSONObject("geometry");
+                        double x = geometry.getDouble("x");
+                        double y = geometry.getDouble("y");
+                        mIntersectionList.add(new Point(x, y));
+                    }
                     mHandler.post(mUpdateResults);
                 } catch (Exception e) {
                     mException = e;
@@ -325,33 +422,75 @@ public class MapDisplay extends Activity implements
         // Add all the route segments with their relevant information to the hiddenSegmentsLayer
         // Add the direction information to the list of directions
         int count = 0;
+        ArrayList<Point> routePoints = new ArrayList<Point>();
         for (RouteDirection rd : curRoute.getRoutingDirections()) {
-            HashMap<String, Object> attribs = new HashMap<String, Object>();
-            attribs.put("text", rd.getText());
-            attribs.put("time", Double.valueOf(rd.getMinutes()));
-            attribs.put("length", Double.valueOf(rd.getLength()));
-            attribs.put("count", Integer.toString(count));
-            curDirections.add(String.format("%d. %s%n%.1f time (%.1f length)",
-                    count, rd.getText(), rd.getMinutes(), rd.getLength()));
-            Graphic routeGraphic = new Graphic(rd.getGeometry(), segmentHider,
-                    attribs);
-            Geometry g=rd.getGeometry();
-            int t= g.getType().value();
+            Geometry g = rd.getGeometry();
+            int t = g.getType().value();
 
-            Log.i("MapDisplay::updateUI",""+g.isSegment(t)+" "+g.isMultiPath(t)+" "+g.isPoint(t));
-            MultiPath p = (MultiPath)g;
-            Log.i("MapDisplay::updateUI",""+p.getPathCount()+" "+p.getPointCount()+" "+p.getSegmentCount());
-            int cnt=p.getPointCount();
-            for(int i=0;i<cnt;i++)
-            {
+            Log.i(TAG, "" + g.isSegment(t) + " " + g.isMultiPath(t) + " " + g.isPoint(t));
+            MultiPath p = (MultiPath) g;
+            Log.i(TAG, "" + p.getPathCount() + " " + p.getPointCount() + " " + p.getSegmentCount());
+            int cnt = p.getPointCount();
+            if(cnt>0)curGPSPoints.add(p.getPoint(cnt-1));
+            for (int i = 0; i < cnt - 1; i++) {
                 Point tmpPt = p.getPoint(i);
                 Log.i(TAG,""+tmpPt.getX()+" "+tmpPt.getY());
+                routePoints.add(tmpPt);
+                Log.i(TAG, "" + tmpPt.getX() + " " + tmpPt.getY());
             }
 
-            Log.i(TAG,""+curDirections.toArray()[curDirections.size()-1]);
-            hiddenSegmentsLayer.addGraphic(routeGraphic);
+            //hiddenSegmentsLayer.addGraphic(routeGraphic);
             count++;
         }
+        Log.i(TAG, Integer.toString(routePoints.size()));
+        int routePointX, routePointY, intersectionX, intersectionY;
+        Polyline path = new Polyline();
+        for (int i = 1; i < routePoints.size(); i++) {
+            routePointX = (int) routePoints.get(i).getX();
+            routePointY = (int) routePoints.get(i).getY();
+            Line segment = new Line();
+            segment.setStart(routePoints.get(i - 1));
+            segment.setEnd(routePoints.get(i));
+            path.addSegment(segment, false);  //false so that a new path will not be started
+            for (int k = 0; k < mIntersectionList.size(); k++) {
+                intersectionX = (int) mIntersectionList.get(k).getX();intersectionY = (int) mIntersectionList.get(k).getY();
+                if ((routePointX / 10 - 5 < intersectionX / 10 && intersectionX / 10 < routePointX / 10 + 5 &&
+                        routePointY / 10 - 5 < intersectionY / 10 && intersectionY / 10 < routePointY / 10 + 5)
+                        || i == routePoints.size() - 1) //Add the last segment regardless of intersections
+                {
+
+                    Log.i(TAG, "intersection: " + Integer.toString(intersectionX) + " routePoint: " + Integer.toString(routePointX));
+                    Log.i(TAG, "intersection: " + Integer.toString(intersectionY) + " routePoint: " + Integer.toString(routePointY));
+                    //Add intersection to GPS points list to enable the directions to update while walking
+                    curGPSPoints.add(routePoints.get(i));
+
+                    //Set up attributes to associate with path segment
+                    HashMap<String, Object> attribs = new HashMap<String, Object>();
+                    attribs.put("text", "text");
+                    attribs.put("time", "time");
+                    attribs.put("length", "length");
+                    attribs.put("count", Integer.toString(count));
+
+                    //Add directions for segment to list of directions (NEEDS CALCULATIONS)
+                    curDirections.add(String.format("%d. %s%n%.1f time (%.1f length)", count, "directions", 0.0, 0.0));
+
+                    //Create graphic for segment and set as hidden
+                    Graphic routeGraphic = new Graphic(path, segmentHider, attribs);
+
+                    //Add graphic to hidden layer
+                    hiddenSegmentsLayer.addGraphic(routeGraphic);
+
+                    //Start new path from last segment of previous path
+                    path.setEmpty();
+
+                    //Update count; used for indexing hidden segments
+                    count++;
+                    break;
+                }
+            }
+        }
+
+
         // Reset the selected segment
         selectedSegmentID = -1;
 
@@ -373,12 +512,13 @@ public class MapDisplay extends Activity implements
         // Zoom to the extent of the entire route with a padding
         tmpPoly=mMap.getExtent();
         mMap.setExtent(curRoute.getEnvelope(), 250);
-
-        // Replacing the first and last direction segments
-        curDirections.remove(0);
-        curDirections.add(0, "Start Location");
-
-        curDirections.add(mDestinationName);
+        if (curDirections != null) {
+            // Replacing the first and last direction segments
+            curDirections.remove(0);
+            curDirections.add(0, "Start Location");
+            curDirections.add(mDestinationName);
+            directionsLabel.setText(curDirections.get(0));
+        }
     }
 
     void clearSegments(){
@@ -464,6 +604,18 @@ public class MapDisplay extends Activity implements
                 break;
             }
         }
+    }
+
+    private static String convertInputStreamToString(InputStream inputStream) throws IOException {
+        int BUFFERSIZE = 1024;
+        StringBuilder sb = new StringBuilder();
+        byte[] readBuffer = new byte[BUFFERSIZE];
+        int readSize;
+        while((readSize = inputStream.read(readBuffer)) != -1) {
+            sb.append(new String(readBuffer, 0, readSize));
+        }
+        inputStream.close();
+        return sb.toString();
     }
 }
 
