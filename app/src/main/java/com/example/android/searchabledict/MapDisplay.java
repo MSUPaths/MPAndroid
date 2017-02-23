@@ -42,9 +42,11 @@ import com.esri.core.geometry.MultiPath;
 import com.esri.core.geometry.Point;
 import com.esri.core.geometry.Polygon;
 import com.esri.core.geometry.Polyline;
+
 import com.esri.core.map.Graphic;
 import com.esri.core.symbol.PictureMarkerSymbol;
 import com.esri.core.symbol.SimpleLineSymbol;
+import com.esri.core.symbol.SimpleMarkerSymbol;
 import com.esri.core.tasks.na.NAFeaturesAsFeature;
 import com.esri.core.tasks.na.Route;
 import com.esri.core.tasks.na.RouteDirection;
@@ -73,7 +75,7 @@ public class MapDisplay extends Activity
     public static MapView mMap = null;
 
     Route mRoute;
-    GraphicsLayer routeLayer, hiddenSegmentsLayer;
+    GraphicsLayer routeLayer, hiddenSegmentsLayer, intersectionsLayer;
 
     // Symbol used to make route segments "invisible"
     SimpleLineSymbol segmentHider = new SimpleLineSymbol(Color.WHITE, 5);
@@ -139,6 +141,10 @@ public class MapDisplay extends Activity
         // Add the route graphic layer (shows the full route)
         routeLayer = new GraphicsLayer();
         mMap.addLayer(routeLayer);
+
+        // Add the intersections layer
+        intersectionsLayer = new GraphicsLayer();
+        mMap.addLayer(intersectionsLayer);
 
         // Initialize the RouteTask
         try {
@@ -365,16 +371,16 @@ public class MapDisplay extends Activity
 
         JSONArray intersectionArray = jsonobject.getJSONArray("features");
         Log.i("QUERY RESULTS", Integer.toString(intersectionArray.length()));
+        SimpleMarkerSymbol intersectionSymbol = new SimpleMarkerSymbol(Color.RED, 10, SimpleMarkerSymbol.STYLE.SQUARE);
+
         for (int i = 0; i < intersectionArray.length(); i++) {
             JSONObject geometry = intersectionArray.getJSONObject(i).getJSONObject("geometry");
             double x = geometry.getDouble("x");
             double y = geometry.getDouble("y");
 
             quadtree.add(new QuadTreeItem(x, y));
-//            mIntersectionList.add(new Point(x, y));
+            intersectionsLayer.addGraphic(new Graphic(new Point(x, y), intersectionSymbol));
         }
-
-
     }
 
 
@@ -512,7 +518,7 @@ public class MapDisplay extends Activity
         // Zoom to the extent of the entire route with a padding
         tmpPoly=mMap.getExtent();
         mMap.setExtent(curRoute.getEnvelope(), 250);
-        if (curDirections != null) {
+        if (curDirections != null && curDirections.size() > 0) {
             // Replacing the first and last direction segments
             curDirections.remove(0);
             curDirections.add(0, "Start Location");
