@@ -512,7 +512,7 @@ public class MapDisplay extends Activity
         // Zoom to the extent of the entire route with a padding
         tmpPoly=mMap.getExtent();
         mMap.setExtent(curRoute.getEnvelope(), 250);
-        if (curDirections != null) {
+        if (curDirections != null && curDirections.size() > 0) {
             // Replacing the first and last direction segments
             curDirections.remove(0);
             curDirections.add(0, "Start Location");
