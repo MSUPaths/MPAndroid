@@ -42,7 +42,6 @@ import com.esri.core.geometry.MultiPath;
 import com.esri.core.geometry.Point;
 import com.esri.core.geometry.Polygon;
 import com.esri.core.geometry.Polyline;
-
 import com.esri.core.map.Graphic;
 import com.esri.core.symbol.PictureMarkerSymbol;
 import com.esri.core.symbol.SimpleLineSymbol;
@@ -54,6 +53,8 @@ import com.esri.core.tasks.na.RouteParameters;
 import com.esri.core.tasks.na.RouteResult;
 import com.esri.core.tasks.na.RouteTask;
 import com.esri.core.tasks.na.StopGraphic;
+import com.google.maps.android.geometry.Bounds;
+import com.google.maps.android.quadtree.PointQuadTree;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -66,8 +67,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
-
-import com.google.maps.android.quadtree.PointQuadTree;
 
 //Will eventually display the map and draw the lines
 public class MapDisplay extends Activity
@@ -458,6 +457,58 @@ public class MapDisplay extends Activity
             segment.setStart(routePoints.get(i - 1));
             segment.setEnd(routePoints.get(i));
             path.addSegment(segment, false);  //false so that a new path will not be started
+
+            //new searching method
+
+            ArrayList<QuadTreeItem> nearbyPoints = new ArrayList<>();
+            int searchRange = 1;
+            //Search in a rectangle around whatever point for the nearest intersection, rectangle increasing in size until point found
+            while(nearbyPoints.isEmpty()){
+                //If this is the last point, add it. Otherwise, look for intersections.\
+                if(i == routePoints.size() - 1){
+                    nearbyPoints.add(new QuadTreeItem(routePointX, routePointY));
+                }
+                else {
+                    Bounds searchBounds = new Bounds(routePointX - searchRange, routePointX + searchRange, routePointY - searchRange, routePointY + searchRange);
+                    nearbyPoints = (ArrayList<QuadTreeItem>) quadtree.search(searchBounds);
+                    searchRange++;
+                }
+            }
+
+            intersectionX = (int) nearbyPoints.get(0).getX();
+            intersectionY = (int) nearbyPoints.get(0).getY();
+
+            //Pasted from old search
+            Log.i(TAG, "intersection: " + Integer.toString(intersectionX) + " routePoint: " + Integer.toString(routePointX));
+            Log.i(TAG, "intersection: " + Integer.toString(intersectionY) + " routePoint: " + Integer.toString(routePointY));
+            //Add intersection to GPS points list to enable the directions to update while walking
+            curGPSPoints.add(routePoints.get(i));
+
+            //Set up attributes to associate with path segment
+            HashMap<String, Object> attribs = new HashMap<String, Object>();
+            attribs.put("text", "text");
+            attribs.put("time", "time");
+            attribs.put("length", "length");
+            attribs.put("count", Integer.toString(count));
+
+            //Add directions for segment to list of directions (NEEDS CALCULATIONS)
+            curDirections.add(String.format("%d. %s%n%.1f time (%.1f length)", count, "directions", 0.0, 0.0));
+
+            //Create graphic for segment and set as hidden
+            Graphic routeGraphic = new Graphic(path, segmentHider, attribs);
+
+            //Add graphic to hidden layer
+            hiddenSegmentsLayer.addGraphic(routeGraphic);
+
+            //Start new path from last segment of previous path
+            path.setEmpty();
+
+            //Update count; used for indexing hidden segments
+            count++;
+
+
+            //Old searching method
+            /*
             for (int k = 0; k < mIntersectionList.size(); k++) {
                 intersectionX = (int) mIntersectionList.get(k).getX();intersectionY = (int) mIntersectionList.get(k).getY();
                 if ((routePointX / 10 - 5 < intersectionX / 10 && intersectionX / 10 < routePointX / 10 + 5 &&
@@ -493,7 +544,7 @@ public class MapDisplay extends Activity
                     count++;
                     break;
                 }
-            }
+            }*/ //Of for
         }
 
 
