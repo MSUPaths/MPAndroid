@@ -55,6 +55,7 @@ import com.esri.core.tasks.na.RouteTask;
 import com.esri.core.tasks.na.StopGraphic;
 import com.google.maps.android.geometry.Bounds;
 import com.google.maps.android.quadtree.PointQuadTree;
+import com.esri.android.map.ags.ArcGISDynamicMapServiceLayer;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -75,6 +76,7 @@ public class MapDisplay extends Activity
 
     Route mRoute;
     GraphicsLayer routeLayer, hiddenSegmentsLayer, intersectionsLayer;
+    ArcGISDynamicMapServiceLayer aerialLayer;
 
     // Symbol used to make route segments "invisible"
     SimpleLineSymbol segmentHider = new SimpleLineSymbol(Color.WHITE, 5);
@@ -136,6 +138,8 @@ public class MapDisplay extends Activity
 
         // Retrieve the map and initial extent from XML layout
         mMap = (MapView) findViewById(R.id.map);
+        aerialLayer = new ArcGISDynamicMapServiceLayer("http://prod.gis.msu.edu/arcgis/rest/services/basemap/aerial/MapServer");
+        mMap.addLayer(aerialLayer);
 
         // Add the route graphic layer (shows the full route)
         routeLayer = new GraphicsLayer();
@@ -156,6 +160,7 @@ public class MapDisplay extends Activity
         // Add the hidden segments layer (for highlighting route segments)
         hiddenSegmentsLayer = new GraphicsLayer();
         mMap.addLayer(hiddenSegmentsLayer);
+
 
         curDirections = new ArrayList<String>();
         curGPSPoints = new ArrayList<Point>();
@@ -204,6 +209,10 @@ public class MapDisplay extends Activity
         locationDisplayManager.setLocationListener(new MyLocationListener());
         locationDisplayManager.start();
         locationDisplayManager.setAutoPanMode(LocationDisplayManager.AutoPanMode.OFF);
+    }
+
+    public void toggleSatellite() {
+        satelliteLayer.setVisible(!satelliteLayer.isVisible());
     }
 
     private class MyLocationListener implements LocationListener {
