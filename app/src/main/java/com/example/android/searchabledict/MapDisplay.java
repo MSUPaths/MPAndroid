@@ -212,7 +212,7 @@ public class MapDisplay extends Activity
     }
 
     public void toggleSatellite() {
-        satelliteLayer.setVisible(!satelliteLayer.isVisible());
+        aerialLayer.setVisible(!aerialLayer.isVisible());
     }
 
     private class MyLocationListener implements LocationListener {
@@ -620,6 +620,10 @@ public class MapDisplay extends Activity
             case R.id.destinationSearch:
                 Intent searchIntent = new Intent(getApplicationContext(), BuildingSearch.class);
                 startActivity(searchIntent);
+                return true;
+
+            case R.id.toggleAerial:
+                toggleSatellite();
                 return true;
 
             default:
