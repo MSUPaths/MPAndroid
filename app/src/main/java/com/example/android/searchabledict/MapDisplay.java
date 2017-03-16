@@ -75,7 +75,7 @@ public class MapDisplay extends Activity
     public static MapView mMap = null;
 
     Route mRoute;
-    GraphicsLayer routeLayer, hiddenSegmentsLayer, intersectionsLayer;
+    GraphicsLayer routeLayer, hiddenSegmentsLayer, intersectionsLayer, matchedIntersectionsLayer;
     ArcGISDynamicMapServiceLayer aerialLayer;
 
     // Symbol used to make route segments "invisible"
@@ -380,7 +380,6 @@ public class MapDisplay extends Activity
         JSONArray intersectionArray = jsonobject.getJSONArray("features");
         Log.i("QUERY RESULTS", Integer.toString(intersectionArray.length()));
         SimpleMarkerSymbol intersectionSymbol = new SimpleMarkerSymbol(Color.RED, 10, SimpleMarkerSymbol.STYLE.SQUARE);
-
         for (int i = 0; i < intersectionArray.length(); i++) {
             JSONObject geometry = intersectionArray.getJSONObject(i).getJSONObject("geometry");
             double x = geometry.getDouble("x");
@@ -388,7 +387,10 @@ public class MapDisplay extends Activity
 
             quadtree.add(new QuadTreeItem(x, y));
             intersectionsLayer.addGraphic(new Graphic(new Point(x, y), intersectionSymbol));
+
         }
+
+
     }
 
 
@@ -487,6 +489,8 @@ public class MapDisplay extends Activity
             intersectionX = (int) nearbyPoints.get(0).getX();
             intersectionY = (int) nearbyPoints.get(0).getY();
 
+            mIntersectionList.add(new Point(intersectionX, intersectionY));
+
             //Pasted from old search
             Log.i(TAG, "intersection: " + Integer.toString(intersectionX) + " routePoint: " + Integer.toString(routePointX));
             Log.i(TAG, "intersection: " + Integer.toString(intersectionY) + " routePoint: " + Integer.toString(routePointY));
@@ -567,6 +571,11 @@ public class MapDisplay extends Activity
                         .getGeometry()).getPointCount() - 1), destinationSymbol);
 
         routeLayer.addGraphics(new Graphic[] { routeGraphic, endGraphic });
+        SimpleMarkerSymbol matchedIntersectionSymbol = new SimpleMarkerSymbol(Color.BLUE, 12, SimpleMarkerSymbol.STYLE.CROSS);
+
+        for (Point p : mIntersectionList) {
+            intersectionsLayer.addGraphic(new Graphic(p, matchedIntersectionSymbol));
+        }        
 
         // Get the full route summary
         routeSummary = String.format("Path to %s%n%.1f minutes (%.1f miles)",
