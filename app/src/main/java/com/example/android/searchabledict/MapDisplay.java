@@ -93,6 +93,7 @@ public class MapDisplay extends Activity
     public static ArrayList<Point> curGPSPoints = null;
 
     public static ArrayList<Point> mIntersectionList = null;
+    public static ArrayList<Point> mWaypointList = null;
     public static int nextDirection;
 
     // Current route, route summary, and gps location
@@ -165,6 +166,7 @@ public class MapDisplay extends Activity
         curDirections = new ArrayList<String>();
         curGPSPoints = new ArrayList<Point>();
         mIntersectionList = new ArrayList<Point>();
+        mWaypointList = new ArrayList<Point>();
         nextDirection = 1;
 
         // Make the segmentHider symbol "invisible"
@@ -469,6 +471,7 @@ public class MapDisplay extends Activity
             segment.setEnd(routePoints.get(i));
             path.addSegment(segment, false);  //false so that a new path will not be started
 
+            mWaypointList.add(new Point(routePoints.get(i).getX(), routePoints.get(i).getY()));
             //new searching method
 
             ArrayList<QuadTreeItem> nearbyPoints = new ArrayList<>();
@@ -572,10 +575,15 @@ public class MapDisplay extends Activity
 
         routeLayer.addGraphics(new Graphic[] { routeGraphic, endGraphic });
         SimpleMarkerSymbol matchedIntersectionSymbol = new SimpleMarkerSymbol(Color.BLUE, 12, SimpleMarkerSymbol.STYLE.CROSS);
+        SimpleMarkerSymbol waypointSymbol = new SimpleMarkerSymbol(Color.GREEN, 8, SimpleMarkerSymbol.STYLE.TRIANGLE);
 
         for (Point p : mIntersectionList) {
             intersectionsLayer.addGraphic(new Graphic(p, matchedIntersectionSymbol));
-        }        
+        }
+
+        for (Point p: mWaypointList) {
+            intersectionsLayer.addGraphic(new Graphic(p, waypointSymbol));b 
+        }
 
         // Get the full route summary
         routeSummary = String.format("Path to %s%n%.1f minutes (%.1f miles)",
