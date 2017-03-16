@@ -7,6 +7,8 @@
 
 	<item android:id="@+id/clearPaths"     
     	android:title="Clear Path" />
+	<item android:id="@+id/toggleAerial"
+		android:title="Toggle Aerial Imagery"/>
 
 	<item android:id="@+id/destinationSearch"
  		android:title="Search" />
