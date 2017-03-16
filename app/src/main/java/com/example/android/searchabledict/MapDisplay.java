@@ -75,7 +75,7 @@ public class MapDisplay extends Activity
     public static MapView mMap = null;
 
     Route mRoute;
-    GraphicsLayer routeLayer, hiddenSegmentsLayer, intersectionsLayer;
+    GraphicsLayer routeLayer, hiddenSegmentsLayer, intersectionsLayer, matchedIntersectionsLayer;
     ArcGISDynamicMapServiceLayer aerialLayer;
 
     // Symbol used to make route segments "invisible"
@@ -93,6 +93,7 @@ public class MapDisplay extends Activity
     public static ArrayList<Point> curGPSPoints = null;
 
     public static ArrayList<Point> mIntersectionList = null;
+    public static ArrayList<Point> mWaypointList = null;
     public static int nextDirection;
 
     // Current route, route summary, and gps location
@@ -165,6 +166,7 @@ public class MapDisplay extends Activity
         curDirections = new ArrayList<String>();
         curGPSPoints = new ArrayList<Point>();
         mIntersectionList = new ArrayList<Point>();
+        mWaypointList = new ArrayList<Point>();
         nextDirection = 1;
 
         // Make the segmentHider symbol "invisible"
@@ -380,7 +382,6 @@ public class MapDisplay extends Activity
         JSONArray intersectionArray = jsonobject.getJSONArray("features");
         Log.i("QUERY RESULTS", Integer.toString(intersectionArray.length()));
         SimpleMarkerSymbol intersectionSymbol = new SimpleMarkerSymbol(Color.RED, 10, SimpleMarkerSymbol.STYLE.SQUARE);
-
         for (int i = 0; i < intersectionArray.length(); i++) {
             JSONObject geometry = intersectionArray.getJSONObject(i).getJSONObject("geometry");
             double x = geometry.getDouble("x");
@@ -388,7 +389,10 @@ public class MapDisplay extends Activity
 
             quadtree.add(new QuadTreeItem(x, y));
             intersectionsLayer.addGraphic(new Graphic(new Point(x, y), intersectionSymbol));
+
         }
+
+
     }
 
 
@@ -467,6 +471,7 @@ public class MapDisplay extends Activity
             segment.setEnd(routePoints.get(i));
             path.addSegment(segment, false);  //false so that a new path will not be started
 
+            mWaypointList.add(new Point(routePoints.get(i).getX(), routePoints.get(i).getY()));
             //new searching method
 
             ArrayList<QuadTreeItem> nearbyPoints = new ArrayList<>();
@@ -486,6 +491,8 @@ public class MapDisplay extends Activity
 
             intersectionX = (int) nearbyPoints.get(0).getX();
             intersectionY = (int) nearbyPoints.get(0).getY();
+
+            mIntersectionList.add(new Point(intersectionX, intersectionY));
 
             //Pasted from old search
             Log.i(TAG, "intersection: " + Integer.toString(intersectionX) + " routePoint: " + Integer.toString(routePointX));
@@ -567,6 +574,16 @@ public class MapDisplay extends Activity
                         .getGeometry()).getPointCount() - 1), destinationSymbol);
 
         routeLayer.addGraphics(new Graphic[] { routeGraphic, endGraphic });
+        SimpleMarkerSymbol matchedIntersectionSymbol = new SimpleMarkerSymbol(Color.BLUE, 12, SimpleMarkerSymbol.STYLE.CROSS);
+        SimpleMarkerSymbol waypointSymbol = new SimpleMarkerSymbol(Color.GREEN, 8, SimpleMarkerSymbol.STYLE.TRIANGLE);
+
+        for (Point p : mIntersectionList) {
+            intersectionsLayer.addGraphic(new Graphic(p, matchedIntersectionSymbol));
+        }
+
+        for (Point p: mWaypointList) {
+            intersectionsLayer.addGraphic(new Graphic(p, waypointSymbol));b 
+        }
 
         // Get the full route summary
         routeSummary = String.format("Path to %s%n%.1f minutes (%.1f miles)",
