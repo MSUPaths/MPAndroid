@@ -36,12 +36,16 @@ import android.widget.Toast;
 import com.esri.android.map.GraphicsLayer;
 import com.esri.android.map.LocationDisplayManager;
 import com.esri.android.map.MapView;
+import com.esri.android.map.ags.ArcGISDynamicMapServiceLayer;
 import com.esri.core.geometry.Geometry;
+import com.esri.core.geometry.GeometryEngine;
 import com.esri.core.geometry.Line;
+import com.esri.core.geometry.LinearUnit;
 import com.esri.core.geometry.MultiPath;
 import com.esri.core.geometry.Point;
 import com.esri.core.geometry.Polygon;
 import com.esri.core.geometry.Polyline;
+import com.esri.core.geometry.SpatialReference;
 import com.esri.core.map.Graphic;
 import com.esri.core.symbol.PictureMarkerSymbol;
 import com.esri.core.symbol.SimpleLineSymbol;
@@ -55,7 +59,6 @@ import com.esri.core.tasks.na.RouteTask;
 import com.esri.core.tasks.na.StopGraphic;
 import com.google.maps.android.geometry.Bounds;
 import com.google.maps.android.quadtree.PointQuadTree;
-import com.esri.android.map.ags.ArcGISDynamicMapServiceLayer;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -446,7 +449,12 @@ public class MapDisplay extends Activity
             int t = g.getType().value();
 
             Log.i(TAG, "" + g.isSegment(t) + " " + g.isMultiPath(t) + " " + g.isPoint(t));
-            MultiPath p = (MultiPath) g;
+
+            GeometryEngine geoeng = new GeometryEngine();
+            //3857 is the Web Mercator Auxiliary Sphere, 9001 is meters
+            Geometry d = geoeng.geodesicDensifyGeometry(g, SpatialReference.create(3857), 3, new LinearUnit(9001));
+            MultiPath p = (MultiPath) d;
+
             Log.i(TAG, "" + p.getPathCount() + " " + p.getPointCount() + " " + p.getSegmentCount());
             int cnt = p.getPointCount();
             if(cnt>0)curGPSPoints.add(p.getPoint(cnt-1));
@@ -582,7 +590,7 @@ public class MapDisplay extends Activity
         }
 
         for (Point p: mWaypointList) {
-            intersectionsLayer.addGraphic(new Graphic(p, waypointSymbol));b 
+            intersectionsLayer.addGraphic(new Graphic(p, waypointSymbol));
         }
 
         // Get the full route summary
