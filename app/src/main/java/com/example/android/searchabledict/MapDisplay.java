@@ -480,8 +480,30 @@ public class MapDisplay extends Activity
             path.addSegment(segment, false);  //false so that a new path will not be started
 
             mWaypointList.add(new Point(routePoints.get(i).getX(), routePoints.get(i).getY()));
-            //new searching method
 
+            //Searching method with densified path
+            ArrayList<QuadTreeItem> nearbyPoints = new ArrayList<>();
+            if(i == routePoints.size() - 1){
+                nearbyPoints.add(new QuadTreeItem(routePointX, routePointY));
+            }
+            else {
+                Bounds searchBounds = new Bounds(routePointX - 3, routePointX + 3, routePointY - 3, routePointY + 3);
+                nearbyPoints = (ArrayList<QuadTreeItem>) quadtree.search(searchBounds);
+            }
+
+            if(!nearbyPoints.isEmpty()){
+                intersectionX = (int) nearbyPoints.get(0).getX();
+                intersectionY = (int) nearbyPoints.get(0).getY();
+
+                mIntersectionList.add(new Point(intersectionX, intersectionY));
+
+
+                Log.i(TAG, "intersection: " + Integer.toString(intersectionX) + " routePoint: " + Integer.toString(routePointX));
+                Log.i(TAG, "intersection: " + Integer.toString(intersectionY) + " routePoint: " + Integer.toString(routePointY));
+            }
+
+            //Searching method w/o densified path
+            /*
             ArrayList<QuadTreeItem> nearbyPoints = new ArrayList<>();
             int searchRange = 1;
             //Search in a rectangle around whatever point for the nearest intersection, rectangle increasing in size until point found
@@ -505,7 +527,7 @@ public class MapDisplay extends Activity
             //Pasted from old search
             Log.i(TAG, "intersection: " + Integer.toString(intersectionX) + " routePoint: " + Integer.toString(routePointX));
             Log.i(TAG, "intersection: " + Integer.toString(intersectionY) + " routePoint: " + Integer.toString(routePointY));
-            //Add intersection to GPS points list to enable the directions to update while walking
+            //Add intersection to GPS points list to enable the directions to update while walking*/
             curGPSPoints.add(routePoints.get(i));
 
             //Set up attributes to associate with path segment
