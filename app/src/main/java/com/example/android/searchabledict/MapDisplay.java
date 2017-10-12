@@ -71,6 +71,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import static java.lang.Math.*;
 
 //Will eventually display the map and draw the lines
 public class MapDisplay extends Activity
@@ -471,6 +472,13 @@ public class MapDisplay extends Activity
         Log.i(TAG, Integer.toString(routePoints.size()));
         int routePointX, routePointY, intersectionX, intersectionY;
         Polyline path = new Polyline();
+        Point routePointfirst = routePoints.get(0);
+
+
+        // point -1: read compass heading:
+        //get compass heading to have a direction to send the user in before getting next points
+        //Ex: North is 0 degrees.
+
         for (int i = 1; i < routePoints.size(); i++) {
             routePointX = (int) routePoints.get(i).getX();
             routePointY = (int) routePoints.get(i).getY();
@@ -537,8 +545,43 @@ public class MapDisplay extends Activity
             attribs.put("length", "length");
             attribs.put("count", Integer.toString(count));
 
-            //Add directions for segment to list of directions (NEEDS CALCULATIONS)
-            curDirections.add(String.format("%d. %s%n%.1f time (%.1f length)", count, "directions", 0.0, 0.0));
+            double finalAngle;
+            if(i >= 3){
+                //do we have to construct new? or no because indexing into the array made of points.
+                //public or private?
+                //maybe use initial as i
+                //index array further in to get initial 3 points
+                //get clock points, I guess going through and converting which angle direction matches a clock layout
+                //not sure if we have to account for rotation or always have a static clock direction if the person is facing 12 all the time
+                //12 oclock changes as the person turns it is the way they are facing
+                Point current = mIntersectionList.get(i - 1);
+                Point initial = mIntersectionList.get(i - 2);
+                Point next = mIntersectionList.get(i);
+
+
+                Point point1 = new Point((current.getX()-initial.getX()),(current.getY()-initial.getY()));
+                Point point2 = new Point((next.getX()-current.getX()),(next.getY()-current.getY()));
+
+                double beta = Math.toDegrees(Math.atan2(point1.getY(), point1.getX()));
+                double alpha = Math.toDegrees(Math.atan2(point2.getY(), point2.getX()));
+
+                if(next.getX() < current.getX()){
+                    finalAngle = 180 - (alpha - beta);
+                    curDirections.add(String.format("%d. %s%n%.1f time (%.1f length)", count, finalAngle, 0.0, 0.0));
+                }
+
+                else{
+                    finalAngle = alpha - beta;
+                    //Add directions for segment to list of directions (NEEDS CALCULATIONS)
+                    curDirections.add(String.format("%d. %s%n%.1f time (%.1f length)", count, finalAngle, 0.0, 0.0));
+                }
+
+            }
+            else{
+                finalAngle = 0.0;
+                curDirections.add(String.format("%d. %s%n%.1f time (%.1f length)", count, finalAngle, 0.0, 0.0));
+            }
+            //NEED TO CONVERT ANGLE TO CLOCK.....??
 
             //Create graphic for segment and set as hidden
             Graphic routeGraphic = new Graphic(path, segmentHider, attribs);
