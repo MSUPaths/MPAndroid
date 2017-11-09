@@ -583,6 +583,12 @@ public class MapDisplay extends Activity
             }
             //NEED TO CONVERT ANGLE TO CLOCK.....??
 
+            finalAngle = ceil((finalAngle-15)/30);
+            if (finalAngle == 0)
+            {
+                finalAngle = 12;
+            }
+
             //Create graphic for segment and set as hidden
             Graphic routeGraphic = new Graphic(path, segmentHider, attribs);
 
