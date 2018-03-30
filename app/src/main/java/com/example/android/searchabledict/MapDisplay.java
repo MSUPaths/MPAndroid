@@ -50,6 +50,7 @@ import com.esri.core.map.Graphic;
 import com.esri.core.symbol.PictureMarkerSymbol;
 import com.esri.core.symbol.SimpleLineSymbol;
 import com.esri.core.symbol.SimpleMarkerSymbol;
+import com.esri.core.symbol.TextSymbol;
 import com.esri.core.tasks.na.NAFeaturesAsFeature;
 import com.esri.core.tasks.na.Route;
 import com.esri.core.tasks.na.RouteDirection;
@@ -71,7 +72,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
-import static java.lang.Math.*;
+import java.util.stream.Collectors;
+
+import static android.media.CamcorderProfile.get;
 
 //Will eventually display the map and draw the lines
 public class MapDisplay extends Activity
@@ -143,7 +146,7 @@ public class MapDisplay extends Activity
 
         // Retrieve the map and initial extent from XML layout
         mMap = (MapView) findViewById(R.id.map);
-        aerialLayer = new ArcGISDynamicMapServiceLayer("http://prod.gis.msu.edu/arcgis/rest/services/basemap/aerial/MapServer");
+        aerialLayer = new ArcGISDynamicMapServiceLayer("https://fis.ipf.msu.edu/agsprod01/rest/services/Imagery/2015SpringTiled/MapServer");
         mMap.addLayer(aerialLayer);
 
         // Add the route graphic layer (shows the full route)
@@ -360,7 +363,7 @@ public class MapDisplay extends Activity
                //     for (int i = 0; i  < 1000; i++){ string += Integer.toString(i);}
 
                     // make GET request to the given URL
-                    HttpResponse httpResponse = httpclient.execute(new HttpGet("http://prod.gis.msu.edu/arcgis/rest/services/routing/intersections/MapServer/0/query?where=1%3D1&text=&objectIds=&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=&returnGeometry=true&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&returnDistinctValues=false&resultOffset=&resultRecordCount=&f=pjson"));
+                    HttpResponse httpResponse = httpclient.execute(new HttpGet("https://fis.ipf.msu.edu/agswayfinding/rest/services/WayfindingResources/MapServer/6/query?where=1%3D1&text=&objectIds=&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&relationParam=&outFields=&returnGeometry=true&returnTrueCurves=false&maxAllowableOffset=&geometryPrecision=&outSR=&returnIdsOnly=false&returnCountOnly=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&returnZ=false&returnM=false&gdbVersion=&returnDistinctValues=false&resultOffset=&resultRecordCount=&f=pjson"));
 
                     // receive response as inputStream
                     InputStream inputStream = httpResponse.getEntity().getContent();
@@ -510,32 +513,7 @@ public class MapDisplay extends Activity
                 Log.i(TAG, "intersection: " + Integer.toString(intersectionY) + " routePoint: " + Integer.toString(routePointY));
             }
 
-            //Searching method w/o densified path
-            /*
-            ArrayList<QuadTreeItem> nearbyPoints = new ArrayList<>();
-            int searchRange = 1;
-            //Search in a rectangle around whatever point for the nearest intersection, rectangle increasing in size until point found
-            while(nearbyPoints.isEmpty()){
-                //If this is the last point, add it. Otherwise, look for intersections.\
-                if(i == routePoints.size() - 1){
-                    nearbyPoints.add(new QuadTreeItem(routePointX, routePointY));
-                }
-                else {
-                    Bounds searchBounds = new Bounds(routePointX - searchRange, routePointX + searchRange, routePointY - searchRange, routePointY + searchRange);
-                    nearbyPoints = (ArrayList<QuadTreeItem>) quadtree.search(searchBounds);
-                    searchRange++;
-                }
-            }
 
-            intersectionX = (int) nearbyPoints.get(0).getX();
-            intersectionY = (int) nearbyPoints.get(0).getY();
-
-            mIntersectionList.add(new Point(intersectionX, intersectionY));
-
-            //Pasted from old search
-            Log.i(TAG, "intersection: " + Integer.toString(intersectionX) + " routePoint: " + Integer.toString(routePointX));
-            Log.i(TAG, "intersection: " + Integer.toString(intersectionY) + " routePoint: " + Integer.toString(routePointY));
-            //Add intersection to GPS points list to enable the directions to update while walking*/
             curGPSPoints.add(routePoints.get(i));
 
             //Set up attributes to associate with path segment
@@ -545,49 +523,9 @@ public class MapDisplay extends Activity
             attribs.put("length", "length");
             attribs.put("count", Integer.toString(count));
 
-            double finalAngle;
-            if(i >= 3){
-                //do we have to construct new? or no because indexing into the array made of points.
-                //public or private?
-                //maybe use initial as i
-                //index array further in to get initial 3 points
-                //get clock points, I guess going through and converting which angle direction matches a clock layout
-                //not sure if we have to account for rotation or always have a static clock direction if the person is facing 12 all the time
-                //12 oclock changes as the person turns it is the way they are facing
-                Point current = mIntersectionList.get(i - 1);
-                Point initial = mIntersectionList.get(i - 2);
-                Point next = mIntersectionList.get(i);
 
 
-                Point point1 = new Point((current.getX()-initial.getX()),(current.getY()-initial.getY()));
-                Point point2 = new Point((next.getX()-current.getX()),(next.getY()-current.getY()));
 
-                double beta = Math.toDegrees(Math.atan2(point1.getY(), point1.getX()));
-                double alpha = Math.toDegrees(Math.atan2(point2.getY(), point2.getX()));
-
-                if(next.getX() < current.getX()){
-                    finalAngle = 180 - (alpha - beta);
-                    curDirections.add(String.format("%d. %s%n%.1f time (%.1f length)", count, finalAngle, 0.0, 0.0));
-                }
-
-                else{
-                    finalAngle = alpha - beta;
-                    //Add directions for segment to list of directions (NEEDS CALCULATIONS)
-                    curDirections.add(String.format("%d. %s%n%.1f time (%.1f length)", count, finalAngle, 0.0, 0.0));
-                }
-
-            }
-            else{
-                finalAngle = 0.0;
-                curDirections.add(String.format("%d. %s%n%.1f time (%.1f length)", count, finalAngle, 0.0, 0.0));
-            }
-            //NEED TO CONVERT ANGLE TO CLOCK.....??
-
-            finalAngle = ceil((finalAngle-15)/30);
-            if (finalAngle == 0)
-            {
-                finalAngle = 12;
-            }
 
             //Create graphic for segment and set as hidden
             Graphic routeGraphic = new Graphic(path, segmentHider, attribs);
@@ -600,47 +538,90 @@ public class MapDisplay extends Activity
 
             //Update count; used for indexing hidden segments
             count++;
+        }//of for
 
 
-            //Old searching method
-            /*
-            for (int k = 0; k < mIntersectionList.size(); k++) {
-                intersectionX = (int) mIntersectionList.get(k).getX();intersectionY = (int) mIntersectionList.get(k).getY();
-                if ((routePointX / 10 - 5 < intersectionX / 10 && intersectionX / 10 < routePointX / 10 + 5 &&
-                        routePointY / 10 - 5 < intersectionY / 10 && intersectionY / 10 < routePointY / 10 + 5)
-                        || i == routePoints.size() - 1) //Add the last segment regardless of intersections
-                {
 
-                    Log.i(TAG, "intersection: " + Integer.toString(intersectionX) + " routePoint: " + Integer.toString(routePointX));
-                    Log.i(TAG, "intersection: " + Integer.toString(intersectionY) + " routePoint: " + Integer.toString(routePointY));
-                    //Add intersection to GPS points list to enable the directions to update while walking
-                    curGPSPoints.add(routePoints.get(i));
-
-                    //Set up attributes to associate with path segment
-                    HashMap<String, Object> attribs = new HashMap<String, Object>();
-                    attribs.put("text", "text");
-                    attribs.put("time", "time");
-                    attribs.put("length", "length");
-                    attribs.put("count", Integer.toString(count));
-
-                    //Add directions for segment to list of directions (NEEDS CALCULATIONS)
-                    curDirections.add(String.format("%d. %s%n%.1f time (%.1f length)", count, "directions", 0.0, 0.0));
-
-                    //Create graphic for segment and set as hidden
-                    Graphic routeGraphic = new Graphic(path, segmentHider, attribs);
-
-                    //Add graphic to hidden layer
-                    hiddenSegmentsLayer.addGraphic(routeGraphic);
-
-                    //Start new path from last segment of previous path
-                    path.setEmpty();
-
-                    //Update count; used for indexing hidden segments
-                    count++;
-                    break;
-                }
-            }*/ //Of for
+        //remove duplicates
+        ArrayList<Point> mNoDupesIntersections  = new ArrayList<Point>();
+        for(Point p : mIntersectionList){
+            if(!mNoDupesIntersections.contains(p)){
+                mNoDupesIntersections.add(p);
+            }
         }
+
+
+
+        //populating the list of directions
+        for(int i = 0; i < mNoDupesIntersections.size(); i++){
+            double finalAngle = 0.0;
+            if(i >= 2){
+
+                Point current = mNoDupesIntersections.get(i - 1);
+                Point next = mNoDupesIntersections.get(i);
+                Point initial = mNoDupesIntersections.get(i - 2);
+
+
+                //point a in caitlins stuff
+                Point point1 = new Point((current.getX()-initial.getX()),(current.getY()-initial.getY()));
+                //point b in caitlins stuff
+                Point point2 = new Point((next.getX()-current.getX()),(next.getY()-current.getY()));
+
+                //named to match caitlins code
+                double alpha = Math.abs(Math.atan2(point1.getY(), point1.getX())) * (180/ Math.PI);
+                double beta = Math.abs(Math.atan2(point2.getY(), point2.getX())) * (180/ Math.PI);
+
+                if(point2.getX() < 0){
+                    beta = 180 - beta;
+                }
+                if(point1.getX() < 0){
+                    alpha = 180-alpha;
+                }
+                if(point2.getY() < 0){
+                    beta = 360 - beta;
+                }
+                if(point1.getY() < 0){
+                    alpha = 360 - alpha;
+                }
+
+                if(alpha > beta){
+                    finalAngle = 360 - Math.abs(alpha - beta);
+                }
+                else{
+                    finalAngle = Math.abs(alpha - beta);
+                }
+
+
+            }
+            else{
+                finalAngle = 0.0;
+
+            }
+
+
+            //clock conversion
+            finalAngle = Math.ceil((finalAngle-15)/30);
+            if (finalAngle == 0)
+            {
+                finalAngle = 12;
+            }
+
+            Log.i(TAG, "Angle: " + Double.toString(finalAngle));
+            //distance calculation
+            double dist;
+            if(i == mNoDupesIntersections.size() - 1){
+                dist = 0;
+            }
+            else{
+                dist = Math.hypot(mNoDupesIntersections.get(i).getX() - mNoDupesIntersections.get(i + 1).getX(), mNoDupesIntersections.get(i).getY() - mNoDupesIntersections.get(i + 1).getY());
+            }
+
+
+            curDirections.add(String.format("%d. %s%n%.1f time (%.1f length)", i, finalAngle, 0.0, dist));
+        }
+
+
+
 
 
         // Reset the selected segment
@@ -656,8 +637,19 @@ public class MapDisplay extends Activity
         SimpleMarkerSymbol matchedIntersectionSymbol = new SimpleMarkerSymbol(Color.BLUE, 12, SimpleMarkerSymbol.STYLE.CROSS);
         SimpleMarkerSymbol waypointSymbol = new SimpleMarkerSymbol(Color.GREEN, 8, SimpleMarkerSymbol.STYLE.TRIANGLE);
 
+        int pointID = 1;
+/*
         for (Point p : mIntersectionList) {
             intersectionsLayer.addGraphic(new Graphic(p, matchedIntersectionSymbol));
+            intersectionsLayer.addGraphic(new Graphic(p, new TextSymbol(20, Integer.toString(pointID), Color.MAGENTA)));
+            pointID++;
+        }
+*/
+
+        for (Point p : mNoDupesIntersections) {
+            intersectionsLayer.addGraphic(new Graphic(p, matchedIntersectionSymbol));
+            intersectionsLayer.addGraphic(new Graphic(p, new TextSymbol(20, Integer.toString(pointID), Color.MAGENTA)));
+            pointID++;
         }
 
         for (Point p: mWaypointList) {

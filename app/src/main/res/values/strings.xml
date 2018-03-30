@@ -64,9 +64,9 @@
     <string name="actionBar_direction">Get Directions</string>
 
     <!--Following for routing dialog-->
-    <string name="geocode_url">http://prod.gis.msu.edu/arcgis/rest/services/routing/ped_network/NAServer/Route</string>
+    <string name="geocode_url">https://fis.ipf.msu.edu/agswayfinding/rest/services/RoutingService/NAServer/PedRoute</string>
 
     <!--To pull all intersections from server -->
-    <string name="intersection_url">http://prod.gis.msu.edu/arcgis/rest/services/routing/intersections/MapServer/0</string>
+    <string name="intersection_url">https://fis.ipf.msu.edu/agswayfinding/rest/services/WayfindingResources/MapServer/6</string>
 
 </resources>
